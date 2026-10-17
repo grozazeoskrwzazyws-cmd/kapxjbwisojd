@@ -1,363 +1,129 @@
-# KroGram — دليل البرومبتات
-
-**طريقة الاستخدام:**
-1. في كل محادثة جديدة مع الذكاء الاصطناعي، أرسل أولاً **برومبت السياق الرئيسي**، وأرفق معه `docs/ARCHITECTURE.md` و`KroGram/project.yml`.
-2. ثم أرسل برومبت **ميزة واحدة فقط** مع الملفات المذكورة تحت «Attached».
-3. ادفع التعديل إلى GitHub ليبني Codemagic. إذا فشل البناء أرسل **برومبت إصلاح البناء**.
-4. قبل الدمج النهائي أرسل **برومبت المراجعة**.
-5. لا تنتقل للميزة التالية قبل نجاح البناء وتجربتها على الجهاز.
-
-البرومبتات مكتوبة بالإنجليزية لأن نتائج الكود معها أدق. استبدل ما بين `<...>` بمحتواك.
-
----
-
-## أ. البرومبتات الثابتة
-
-### A1. السياق الرئيسي (أول رسالة في كل محادثة)
-
-```text
-You are a senior iOS engineer helping me build KroGram, an unofficial standalone Telegram client for iOS.
-
-Stack: Swift, SwiftUI, TDLib (via the TDLibFramework Swift package), XcodeGen (KroGram/project.yml), built and tested on Codemagic. I have no local Xcode. Sources: KroGram/KroGram/. Tests: KroGram/KroGramTests/. Architecture notes: docs/ARCHITECTURE.md (attached).
-
-Rules:
-1. One feature per request. Keep diffs minimal. Do not refactor unrelated code.
-2. Use TDLib for all Telegram logic. Verify function/type names against td_api.tl for the TDLib version used in the project. Never invent API names. If unsure, say so.
-3. Reimplement behavior from scratch. Do not copy code from Telegram-iOS (GPL).
-4. Put each feature in its own folder/module with a small public interface.
-5. Every user-facing string needs Arabic and English localization.
-6. No secrets in the repo. api_id/api_hash stay in Keychain.
-7. Stay within the deployment target in project.yml. Avoid newer APIs.
-8. Handle TDLib updates properly (state must come from updates, not assumptions). All UI work on the main thread.
-9. Reply with: (a) a short plan, (b) the full contents of every new or changed file, (c) any project.yml changes, (d) a manual test checklist, (e) anything that may fail to compile.
-
-Acknowledge these rules in one line, then wait for my feature request.
-```
-
-### A2. إصلاح البناء
-
-```text
-The Codemagic build failed. Fix only what the log shows. Do not change behavior or add features.
-Return the full corrected files and explain the root cause in two lines.
-
-Build log (last 150 lines before the first error):
-<paste log>
-```
-
-### A3. مراجعة قبل الدمج
-
-```text
-Review the changes below for: compile errors, wrong TDLib function names, missing update handling, main-thread violations, retain cycles and memory leaks, missing Arabic/English strings, RTL layout problems, and security issues.
-List problems by severity, then give corrected code only for the problems found.
-
-<paste diff or files>
-```
-
-### A4. قالب ميزة جديدة
-
-```text
-Feature: <name>
-Goal: <one sentence>
-Attached files: <list>
-Requirements:
-- <item>
-Done when:
-- <item>
-Out of scope: <item>
-```
-
----
-
-## المرحلة 0: تثبيت الأساس
-
-### P0.1 نجاح البناء والاختبارات
-
-```text
-Feature: Make the current repo build and pass tests on Codemagic.
-Goal: A green "KroGram - Build & Test" workflow.
-Attached: codemagic.yaml, KroGram/project.yml, the build log, docs/ARCHITECTURE.md.
-Requirements:
-- Find every compile error from the log and fix it with minimal changes.
-- Check that XcodeGen config includes all source and test folders.
-- Do not add features.
-Done when: build + tests would pass; list any remaining risk.
-```
-
-### P0.2 إغلاق مسودة Phase A
-
-```text
-Feature: Finish the unverified Phase A items.
-Goal: Make text formatting, remote search, reactions, pin/forward, incoming polls, and voice messages correct against TDLib.
-Attached: the files for chat, composer, media, and polls; docs/ARCHITECTURE.md.
-Requirements:
-- Audit each item against td_api.tl and fix wrong calls.
-- Voice notes: record AAC in M4A, then check TDLib's expected format for inputMessageVoiceNote (waveform, duration). Explain whether conversion to OGG/Opus is required and implement it if so.
-- Polls: vote, retract vote, show results.
-- Add unit tests for the pure logic parts.
-Done when: each item has a manual test steps list I can run on a device.
-```
-
-### P0.3 جاهزية المستودع
-
-```text
-Feature: Repository hygiene.
-Goal: Safe, clear repo.
-Requirements:
-- Add a LICENSE file (I will tell you which license) and a THIRD_PARTY notice for TDLib (Boost) and any other dependency.
-- Update .gitignore for Xcode, signing files, and secrets.
-- Add a README section stating this is an unofficial client that uses the user's own api_id/api_hash.
-Done when: files are ready to commit.
-```
-
----
-
-## المرحلة 1: أساسيات المحادثة
-
-### P1.1 الرد والتعديل والحذف والنسخ
-
-```text
-Feature: Reply, edit, delete, copy.
-Attached: chat view, message bubble, composer, TDLib service files.
-Requirements:
-- Long-press (context menu) on a message: Reply, Edit (own messages only), Delete (for me / for everyone when allowed), Copy.
-- Show a reply preview bar above the composer and a quoted preview inside the bubble; tapping it scrolls to the original message.
-- Edited messages show an "edited" label. React to updateMessageEdited and updateDeleteMessages.
-Done when: all four actions work in private chats, groups, and channels where permitted.
-```
-
-### P1.2 الرسائل المحفوظة وإعادة التوجيه
-
-```text
-Feature: Saved Messages and forwarding.
-Requirements:
-- Saved Messages chat at the top of the chat list.
-- Forward one or several selected messages to one or more chats, with an option to hide the original sender.
-- Multi-select mode in chat (select, forward, delete).
-Done when: forwarding a mix of text, photo, and file works.
-```
-
-### P1.3 المجلدات والأرشيف والكتم والتثبيت
-
-```text
-Feature: Chat folders, archive, mute, pin.
-Requirements:
-- Folder tabs above the chat list from TDLib chat folders (list, create, edit, reorder, delete).
-- Archive list via the archive chat list, with swipe actions: archive, mute (duration choices), pin, mark read/unread.
-- Pinned chats stay on top per list. Unread badges per folder.
-Done when: folder changes sync with the official Telegram app on my account.
-```
-
-### P1.4 الإشعارات
-
-```text
-Feature: Push notifications design and client side.
-Goal: Explain the options, then implement the client side.
-Requirements:
-- Explain clearly that APNs push for a third-party Telegram client needs a server that receives pushes and relays them, and what that server must do with TDLib's registerDevice / processPushNotification flow.
-- Implement client side: permission request, device token registration with TDLib, local notifications while the app runs, per-chat notification settings screen, badge count.
-- Do not build the server yet; give me a short design for it.
-Done when: foreground and local notifications work and the push flow is documented.
-```
-
----
-
-## المرحلة 2: المجموعات والقنوات
-
-### P2.1 المجموعات
-
-```text
-Feature: Create and manage groups.
-Requirements:
-- Create a group (name, photo, members). Group info screen: members list, add/remove members, leave, invite link.
-- Admin tools: promote/demote admins with rights, restrict/ban members.
-- Use TDLib supergroup/basic group APIs as appropriate and handle the upgrade of a basic group to a supergroup.
-Done when: I can create and manage a group from the app and see changes in the official app.
-```
-
-### P2.2 القنوات
-
-```text
-Feature: Channels.
-Requirements:
-- Create a channel, post messages, edit/delete posts, view counters.
-- Join/leave by username or invite link, subscriber count, channel info screen.
-- Read-only composer for non-admins.
-Done when: posting and viewing work for admin and for subscriber accounts.
-```
-
-### P2.3 المواضيع (Topics)
-
-```text
-Feature: Forum topics in supergroups.
-Requirements:
-- Detect forum supergroups, list topics with icons and unread counts, open a topic as its own thread.
-- Create, rename, close, and reopen topics when permitted.
-Done when: sending in and switching between topics works.
-```
-
-### P2.4 التعليقات على منشورات القنوات
-
-```text
-Feature: Comments on channel posts.
-Requirements:
-- Show the comment counter under posts that have a discussion thread; open the thread (message thread APIs) and allow replying.
-- Keep scroll position and unread state correct.
-Done when: comments display and send correctly.
-```
-
----
-
-## المرحلة 3: الوسائط المتقدمة
-
-### P3.1 عارض الوسائط والألبومات
-
-```text
-Feature: Media viewer and albums.
-Requirements:
-- Full-screen viewer with swipe between media, pinch zoom, share/save, and caption.
-- Send and display albums (several photos/videos grouped).
-- Streaming-friendly video playback with progress and download state.
-Done when: viewing and sending albums works smoothly with 20+ items.
-```
-
-### P3.2 الملصقات المتحركة
-
-```text
-Feature: Animated and video stickers.
-Requirements:
-- Render TGS (Lottie) and WebM video stickers; static WebP as before.
-- Sticker sets: installed list, search, recent, add/remove sets, a sticker picker panel.
-- Cache decoded frames and limit memory.
-Done when: animated stickers play in chat and the picker without frame drops or memory growth.
-```
-
-### P3.3 GIF والإيموجي
-
-```text
-Feature: GIFs, emoji picker, custom emoji.
-Requirements:
-- Saved GIFs panel and GIF search (inline bot or TDLib search), send animations.
-- Emoji picker with recents; display custom emoji in text where entities exist.
-Done when: I can search, send, and receive GIFs and emoji reliably.
-```
-
-### P3.4 مدير التنزيلات وحدود الملفات
-
-```text
-Feature: Download manager and large files.
-Requirements:
-- Remove the 25 MB manual download limit. Add a downloads screen with queue, pause/resume/cancel, and progress.
-- Storage settings: cache size limit, clear by type, auto-download rules per network type.
-- Upload large files with progress and cancel.
-Done when: a 1 GB file uploads and downloads with correct progress and resume.
-```
-
----
-
-## المرحلة 4: الأمان والحساب
-
-### P4.1 رمز القفل
-
-```text
-Feature: App passcode and biometrics.
-Requirements:
-- Local passcode (stored hashed in Keychain), Face ID/Touch ID unlock, auto-lock timeout, blur in the app switcher.
-- Do not confuse with Telegram's cloud two-step verification; implement that separately in a later task.
-Done when: the app locks and unlocks correctly after background/foreground cycles.
-```
-
-### P4.2 الجلسات والخصوصية
-
-```text
-Feature: Active sessions and privacy settings.
-Requirements:
-- Sessions list with device info, terminate one or all others.
-- Privacy screens: last seen, phone number, profile photo, calls, groups, forwards (rules via TDLib privacy settings), blocked users, two-step verification set/change/disable.
-Done when: changes appear in the official app.
-```
-
-### P4.3 تعدد الحسابات
-
-```text
-Feature: Multiple accounts.
-Requirements:
-- Design first: one TDLib client instance per account with separate database and files directories; show the design and the migration for the existing single account.
-- Then implement: add account, switch account from the settings/menu, per-account unread badges, per-account logout.
-Done when: two accounts can run side by side without data mixing.
-```
-
-### P4.4 الدردشات السرية
-
-```text
-Feature: Secret chats.
-Requirements:
-- Create a secret chat from a user's profile, show the encryption key visual, self-destruct timer, and screenshot notice if available.
-- Make clear in the UI that secret chats are device-specific.
-Done when: sending text and photos in a secret chat works between two devices.
-```
-
----
-
-## المرحلة 5: المكالمات
-
-### P5.1 دراسة الجدوى أولاً
-
-```text
-Feature: Voice/video calls feasibility.
-Goal: A written report, no code yet.
-Requirements:
-- Explain what TDLib provides for call signaling and what it does NOT provide (media transport, encryption of media, audio session).
-- List the realistic options for the media layer on iOS (for example an existing open-source library vs building on WebRTC), including license implications (GPL vs permissive) and App Store requirements (CallKit, PushKit).
-- Give effort estimate, risks, and a minimal first milestone (outgoing voice call).
-Done when: I can decide whether to include calls.
-```
-
----
-
-## المرحلة 6: ميزاتك الخاصة (Commander)
-
-### P6.1 هيكلة Commander كوحدة مستقلة
-
-```text
-Feature: Refactor KroGram Commander into an isolated module.
-Attached: all Commander files and settings screen.
-Requirements:
-- Define a Command protocol (name, aliases, description, permission level, async execute(context)), a registry, and a parser.
-- Move existing commands (calculator, text tools, chat info, local games) behind that protocol with no behavior change.
-- Enable/disable per command from settings. No dependency from other modules into Commander internals.
-Done when: existing commands still work and a new command needs one small file.
-```
-
-### P6.2 أوامر جديدة
-
-```text
-Feature: New Commander commands: <list what you want>.
-Requirements:
-- Each command: one file, localized help text, unit tests for the logic.
-- Commands must only use official TDLib features and the user's own account actions. No spam, mass messaging, or scraping behavior.
-Done when: each command has usage examples in the help screen.
-```
-
----
-
-## المرحلة النهائية: الصقل
-
-### F1 الأداء والذاكرة
-
-```text
-Feature: Performance pass.
-Requirements:
-- Profile and fix: chat list scrolling, long chat history, image/video memory, TDLib update handling on the main thread.
-- Use lazy loading, diffing, and prefetch where suitable. Report what you changed and expected impact.
-Done when: a 10,000-message chat scrolls smoothly.
-```
-
-### F2 الجاهزية للنشر
-
-```text
-Feature: Release readiness.
-Requirements:
-- Checklist for TestFlight/App Store: unofficial-client disclosure inside the app and the store description, user's own api_id/api_hash flow, privacy policy points, content moderation and report features Apple expects for user-generated content, and Telegram API terms to comply with.
-- Accessibility (Dynamic Type, VoiceOver), RTL review, localization audit.
-Done when: I have a pass/fail checklist and fixes for failures.
-```
+أنت تعمل على مستودع KroGram (iOS، Swift/SwiftUI فوق TDLib عبر واجهة JSON). المطلوب ثلاث مهام بهذا الترتيب، وكل مهمة تُسلَّم منفصلة:
+- مهمة 1: إصلاح عدم فتح المحادثات عند الضغط عليها (تجمّد).
+- مهمة 2: إصلاح تأخر كود تسجيل الدخول أو عدم وصوله.
+- مهمة 3: إعادة تصميم المحادثة والإرفاق والملف الشخصي بأسلوب تيليجرام، مع زر KroGram العائم.
+
+## قيود عامة (تسري على المهام كلها)
+- لا Xcode عندك. لا تدّعِ أن البناء نجح ولا أن المشكلة زالت، وبيّن في كل ملخص ما لم تتحقق منه.
+- كل ملف Swift جديد أو معدّل يبدأ بالسطر الأول حرفيًا: `// Copyright © 2026 Kro. KroGram original materials.` (سكربت scripts/verify-copyright.sh يفحصه).
+- كسّر أي تعبير SwiftUI معقد إلى أجزاء صغيرة مسماة (سبق أن فشل بناء Codemagic بخطأ "unable to type-check this expression in reasonable time").
+- أي طلب أو حقل TDLib: تحقق من اسمه وحقوله في td_api.tl للإصدار المستخدم فعليًا. لا تخمّن. إن لم تتأكد فاعرض العنصر معطّلًا بشارة "قريبًا" ولا ترسل طلبًا غير مضمون.
+- كل النصوص الظاهرة عبر نظام الترجمة الحالي (L("...") ومفاتيح Localizable) بالعربية والإنجليزية ودعم RTL. استخدم ألوان ThemeStore لا ألوانًا ثابتة، واحترم Reduce Motion ووضع الطاقة المنخفضة.
+- لا تسجّل في أي سجل رقم الهاتف أو الكود أو كلمة المرور أو نص الرسائل.
+- أضف اختبارات وحدة لكل منطق غير بصري تغيّره.
+- لا تنسخ شعارًا أو اسمًا أو نصًا لتطبيق آخر. اللقطات المرجعية للتخطيط فقط، والشعار هو شعار KroGram.
+- لا تلمس الأرشيفات في جذر المستودع ولا ملفي Bugs/New bugs، ولا تغيّر إصدارات الحزم في project.yml.
+- بعد كل مهمة: قائمة الملفات المعدّلة، سطر لكل تغيير، وما لم تستطع التحقق منه دون تشغيل.
+
+# مهمة 1: المحادثات لا تفتح عند الضغط
+
+العَرَض: في تبويب Chats لا تفتح أي محادثة عند الضغط. التطبيق يتجمّد أو يتأخر ولا يمكن الضغط على أي محادثة أخرى حتى تنتهي الأولى. اقرأ أولًا: ChatListView.swift (body وchatLink(for:))، ChatView.swift (body وcontent وscrollToEnd وloadOlderIfAtTop)، ChatsViewModel.swift (visibleChats وchat(_:) وopenChat وكل ما ينشر @Published)، TDJSONClient.swift وTelegramService.swift. الأسباب أدناه فرضيات مرتّبة بالاحتمال، لا تشخيص مؤكد؛ عالجها بالترتيب.
+
+1) تعارض التحديد مع التنقل: ChatListView تستخدم `List(selection: $selection)` مع `.environment(\.editMode, $editMode)` وعناصرها `NavigationLink(value:)`. على iOS 17 وجود binding للتحديد مع NavigationLink(value:) قد يعالج الضغط كتحديد أو يمنع التنقل. الإصلاح: مرّر binding التحديد فقط في وضع التحرير (`List(selection: isEditing ? $selection : nil)`) أو افصل القائمة إلى نسختين. اختبر العزل بإزالة `.swipeActions` و`.contextMenu(preview:)` مؤقتًا للتأكد أن أيًا منهما ليس السبب، ولا تتركهما محذوفين إن لم يكونا السبب.
+
+2) حساب ثقيل متكرر على الخيط الرئيسي: `visibleChats` خاصية محسوبة (فلترة، وبحث داخل رسائل كل محادثة عند وجود نص بحث)، وتُستدعى في ForEach ثم مرة أخرى في `.onAppear` لكل صف (`vm.visibleChats.last?.id`) فتصير O(n²). الإصلاح: احسبها مرة واحدة لكل body واحتفظ بمعرّف آخر عنصر، ثم خزّن النتيجة في @Published تُحدَّث عند تغيّر مصادرها فقط، مع debounce للبحث داخل الرسائل. و`chat(_ id:)` تبحث خطيًا (`chats.first`): أضف فهرسًا [Int64: Int] يُحدَّث مع تعديل chats.
+
+3) إغراق الخيط الرئيسي بتحديثات TDLib: ChatsViewModel كائن واحد ضخم، وكل تحديث يعيد رسم القائمة كلها. الإصلاح: اجمع أحداث ChatEvent وطبّقها دفعة كل 100–250ms، ولا تكتب @Published إن لم تتغير القيمة فعلًا. وتأكد أن تحليل JSON الثقيل (TGParse) وأي استدعاء متزامن لا يعمل على MainActor.
+
+4) تكلفة أول رسم لـ ChatView: body يعيد حساب `albumRows(from: chat.messages)` على كل الرسائل، وكل فقاعة تحمل transition مخصصًا (KroBlurTransition)، وscrollToEnd يعمل عند onAppear وعند كل تغيّر لآخر رسالة. الإصلاح: اعرض آخر ~50 رسالة في أول رسم وزد عند التمرير للأعلى، وخزّن نتيجة albumRows، وعطّل الحركة عند أول ظهور. تأكد أن `openChat` لا تؤخر ظهور الشاشة: تظهر ChatView فورًا بالرسائل المخزّنة والتاريخ يُحمَّل في الخلفية مع مؤشر، دون انتظار setChatOpen أو refreshChat.
+
+5) فتح مكرر: ChatView تنادي `vm.openChat` في `.task` وعند كل عودة scenePhase إلى active. تأكد أن chatOpenRequests تمنع طلبين متزامنين لنفس المحادثة، وأن الضغط المتكرر السريع لا يدفع المعرّف مرتين إلى navigationPath.
+
+القياس (أضفه ولا تحذفه): Logger/os_signpost لزمن حساب visibleChats، وتطبيق دفعة أحداث TDLib، والزمن من الضغط حتى ChatView.onAppear، وأول رسم لـ ChatView. سجّل فقط ما يتجاوز 50ms، في Debug أو خلف مفتاح في الإعدادات، وأخبرني كيف أقرأها من الآيفون (بنائي عبر Codemagic).
+
+# مهمة 2: كود تسجيل الدخول يتأخر أو لا يصل
+
+اقرأ أولًا: Features/Auth/LoginView.swift، Telegram/SessionStore.swift (run وhandle وisBusy)، Telegram/TelegramService.swift (AuthStep وsubmitPhone/submitCode وsendParameters وhandleAuthorization وحلقة consumer في start)، Telegram/TDJSONClient.swift. ما وجدته في الشيفرة الحالية (راجعه بنفسك ثم أصلحه):
+
+1) لا مهلة للطلبات: `TDJSONClient.request` يخزّن continuation في `pending` ولا ينتهي إن لم يصل رد (انقطاع شبكة مثلًا)، فيبقى `session.isBusy` صحيحًا والأزرار معطّلة (`.disabled(session.isBusy ...)`) ولا يمكن إعادة المحاولة أبدًا. الإصلاح: مهلة (مثلًا 30 ثانية) تُنهي الطلب بـ TDError واضح (REQUEST_TIMEOUT) وتزيل المعلّق من pending، مع إعادة isBusy إلى false دائمًا (defer). اجعل منطق المهلة في دالة صغيرة قابلة للاختبار. وفي الواجهة: بعد ~15 ثانية من الانتظار أظهر نصًا "التأخير أطول من المعتاد" وزر إعادة المحاولة.
+
+2) `authorizationStateWaitCode` يُحوَّل إلى `.waitCode` فقط، فتُهمل `code_info` كلها (نوع إرسال الكود، الطول، النوع التالي next_type، المهلة timeout). والنتيجة أن المستخدم لا يعرف أن الكود غالبًا يصل إلى محادثة "Telegram" في تطبيق تيليجرام على جهاز آخر وليس SMS، ولا يوجد أي زر لإعادة الإرسال (`resendAuthenticationCode` غير مستخدم). الإصلاح: وسّع AuthStep.waitCode ليحمل بنية AuthCodeInfo (النوع، الطول، النوع التالي، المهلة بالثواني، الرقم) بعد التحقق من أسماء الحقول في td_api.tl. في الواجهة: اعرض أين أُرسل الكود ("في تطبيق تيليجرام" أو "SMS" أو "اتصال")، وعدّاد تنازلي، وزر "إعادة إرسال الكود" يُفعَّل عند انتهاء المهلة ويستدعي resendAuthenticationCode (تحقق من توقيعه في الإصدار المستخدم)، وأرسل الكود تلقائيًا عند اكتمال الطول. وأي `authorizationStateWaitCode` جديد (بعد إعادة الإرسال) يحدّث الواجهة.
+
+3) حالات التفويض غير المدعومة: `handleAuthorization` يحوّل كل ما لا يعرفه إلى `.unsupported(type)` فيعلق المستخدم. حالات مثل ربط البريد الإلكتروني للدخول (authorizationStateWaitEmailAddress وWaitEmailCode)، والتسجيل (WaitRegistration)، وتأكيد من جهاز آخر (WaitOtherDeviceConfirmation) قد تظهر لحسابات حقيقية. تحقق من أسمائها وطلباتها في td_api.tl ونفّذ تدفق البريد (إدخال العنوان ثم الكود مع إعادة إرسال) والتسجيل على الأقل، وما لا تستطيع تنفيذه اعرض له رسالة واضحة بدل شاشة عالقة.
+
+4) رسائل الأخطاء: لا توجد معالجة خاصة لأخطاء الإرسال. أضف تعيينًا واضحًا بالعربية والإنجليزية لـ: PHONE_NUMBER_INVALID، PHONE_CODE_INVALID، PHONE_CODE_EXPIRED، PHONE_NUMBER_FLOOD، PHONE_NUMBER_BANNED، PASSWORD_HASH_INVALID، API_ID_INVALID، وخطأ 429 "Too Many Requests: retry after N" (استخرج N واعرض عدّادًا تنازليًا بدل رسالة عامة). عند API_ID_INVALID أو تكرار عدم وصول الكود، أظهر تلميحًا للتحقق من api_id وapi_hash من my.telegram.org.
+
+5) تنظيف رقم الهاتف: قبل الإرسال احذف المسافات والشرطات والأقواس، وتأكد من وجود رمز الدولة (+ أو 00 تتحول إلى +)، وتحقق أن الطول معقول، وأظهر خطأً واضحًا قبل أي طلب شبكة. لا تغيّر الرقم الذي يراه المستخدم في الحقل، فقط القيمة المرسلة.
+
+6) تأخير داخلي: حلقة `consumer` في TelegramService تعالج التحديثات بالتتابع وتنتظر (`await`) داخل المعالج استدعاءات شبكية (مثل loadFolders في updateChatFolders وapplyOnlineStatus)، فقد تتأخر تحديثات التفويض خلفها. وخيط الاستقبال في TDJSONClient بجودة `.utility` المنخفضة. الإصلاح: عالج `updateAuthorizationState` مباشرة وفورًا خارج الطابور، ووجّه بقية التحديثات إلى مسار منفصل يحافظ على ترتيبها، وارفع جودة خيط الاستقبال إلى `.userInitiated`.
+
+7) معاملات setTdlibParameters: `system_version` فارغ و`device_model` ثابت "iPhone". املأهما بقيم حقيقية من الجهاز (UIDevice.current.systemVersion وmachine identifier أو model) ولا تنتحل هوية تطبيق آخر. أبقِ api_id/api_hash من إدخال المستخدم كما هي.
+
+8) isBusy: `SessionStore.handle` يعيد isBusy = false عند كل خطوة، و`run` يعيده بعد عودة الطلب، فيحدث تداخل. استبدله بحالة صريحة (idle/submitting مع وقت البدء) وأعدها إلى idle في defer دائمًا، ومنع الضغط المزدوج دون حجب إعادة المحاولة بعد المهلة.
+
+القياس: سجّل بلا بيانات حساسة زمن submitPhone→waitCode، ونوع كود الخطأ فقط (لا الرقم ولا الكود). اكتب اختبارات: تحليل code_info من JSON تجريبي، تنظيف الرقم، تعيين رسائل الأخطاء واستخراج مهلة 429، وسلوك المهلة.
+
+# مهمة 3: إعادة التصميم بأسلوب تيليجرام
+
+اقرأ أولًا: ChatView.swift وChatProfileView.swift وPollComposerView.swift وLocationShareView.swift وStickerPickerView.swift وSystemContactPicker.swift وMediaGalleryViewer.swift، ومجلد DesignSystem/ كله (Theme وComponents وEffects وNeonStyle)، وChatsViewModel.swift. نفّذها على ثلاث مراحل (أ، ب، ج) مع ملخص بعد كل واحدة.
+
+## أ) شاشة المحادثة
+الخلفية سوداء. الشريط العلوي عناصر زجاجية عائمة (Material شفاف + حد رفيع) وليس شريطًا ملتصقًا:
+- يسارًا: زر رجوع كبسولة فيه سهم وشارة بعدد المحادثات غير المقروءة.
+- في الوسط: كبسولة فيها اسم المحادثة بخط عريض وتحته الحالة (آخر ظهور/متصل/عدد الأعضاء) بلون ثانوي. الضغط عليها يفتح الملف الشخصي (المرحلة ج).
+- يمينًا: دائرة فيها صورة المحادثة.
+شريط الكتابة ثلاثة عناصر منفصلة:
+- زر دائري على اليسار فيه مشبك (يفتح لوحة الإرفاق، المرحلة ب).
+- حقل نص بشكل حبة طويلة بحدود مستديرة بالكامل وfplaceholder "Message"، وداخل طرفه الأيمن أيقونتان: ملصقات/إيموجي، وصوتيات جاهزة أو صوت (استخدم ما هو موجود فعلًا).
+- زر دائري على اليمين: ميكروفون عند الحقل الفارغ ويتحول إلى إرسال عند وجود نص (حافظ على السلوك الحالي).
+
+الزر العائم لـ KroGram:
+- زر دائري زجاجي فوق زر الميكروفون مباشرة (يمين الشاشة، فوق شريط الكتابة) وبداخله شعار KroGram. أنشئ Image Set باسم KroLogo من أيقونة التطبيق الحالية إن لم يوجد، ولا تختلق شعارًا جديدًا.
+- وظيفته التحكم بجميع ميزات التطبيق: عند الضغط تفتح لوحة "KroGram Hub" (sheet زجاجية أو قائمة منبثقة) تجمع ما هو موجود فعلًا: أوامر Commander وتفعيلها، وضع الخصوصية (PrivacyMode)، الثيمات والمظهر ومستوى المؤثرات، المجلدات، وإعدادات سريعة خاصة بالمحادثة الحالية. استخرج قائمة الميزات الحقيقية من الشيفرة ولا تضف ميزة غير موجودة. عرّف العناصر في نموذج بيانات واحد (enum أو struct) حتى تُضاف ميزة بسطر واحد.
+- سلوك الإخفاء: يختفي بحركة (opacity + scale) عندما يبدأ المستخدم الكتابة أو يركّز على الحقل، ويعود بعد 1.2 ثانية من آخر ضغطة مفتاح، أو فورًا عند فقدان التركيز أو إخفاء لوحة المفاتيح. استخدم @FocusState وتتبع تغيّر النص مع Task قابلة للإلغاء (debounce) ولا تستخدم Timer. مع Reduce Motion استبدل الحركة بتغيير opacity فقط.
+- ضع منطق الإخفاء في نوع صغير قابل للاختبار (مثل TypingVisibilityController) واكتب اختبارات: يختفي عند أول إدخال، يعود بعد المهلة، يُلغى العد عند إدخال جديد.
+- لا يتداخل الزر مع آخر الرسائل: أضف padding أو safe inset للقائمة.
+
+## ب) لوحة الإرفاق
+عند الضغط على المشبك تظهر Bottom Sheet:
+- مقبض سحب في الأعلى، وصف علوي فيه زر إغلاق دائري (X) على اليسار وفي الوسط عنوان قابل للضغط مع سهم (مثل "Recents") لاختيار الألبوم.
+- المحتوى: شبكة صور وفيديو من مكتبة الصور (PhotosUI أو PHAsset) مع تحديد متعدد وشارة عدد، وزر إرسال يظهر عند وجود تحديد وحقل تعليق.
+- في الأسفل شريط كبسولة عائم قابل للتمرير أفقيًا، تبويبات (أيقونة فوق نص): Gallery وArticle وGift وFile وLocation وChecklist، وبعدها Contact وPoll وغيرها إن وُجدت. التبويب النشط له خلفية بارزة.
+- اربط التبويبات بالشاشات الموجودة: File بالاستيراد الحالي (حد 25MB)، Location بـ LocationShareView، Contact بـ SystemContactPicker، Poll بـ PollComposerView.
+- Gift وArticle وChecklist: تحقق من td_api.tl هل هي مدعومة بالإصدار المستخدم (الهدايا، قائمة المهام inputMessageChecklist، المقال). نفّذ ما هو مؤكد وما لم يُؤكد يُعرض معطّلًا بشارة "قريبًا".
+- أعد استخدام منطق الإرسال الحالي (storeOutgoingFile والتنظيف) ولا تكرره.
+
+## ج) صفحة الملف الشخصي
+أعد بناء ChatProfileView بهذا الترتيب (مستخدم أو قناة أو مجموعة حسب نوع المحادثة، وما لا ينطبق يُخفى):
+1. رأس: صورة كبيرة مستديرة، وإلى جانبها حالة الإيموجي إن وُجدت، ثم الاسم بخط كبير، ثم آخر ظهور. عند التمرير ينكمش إلى شريط علوي زجاجي فيه الرجوع والاسم والحالة.
+2. صف أزرار سريعة بأربع بطاقات: اتصال (call) وكتم (mute) وبحث (search) والمزيد (more). اربطها بما هو موجود، وما لا يدعمه المشروع يُعطَّل.
+3. شريط الموسيقى المعروضة على الملف الشخصي (اسم المقطع - الفنان) إن أعاد TDLib ذلك، بعد التحقق من الحقل في الإصدار، وإلا فاحذف الصف.
+4. بطاقات معلومات بزوايا مستديرة وفواصل رفيعة: المعرّف الرقمي (id) مع نسخ بالضغط المطوّل، تاريخ التسجيل التقريبي إن أمكن حسابه بطريقة معلنة كتقدير، وملاحظة (note) قابلة للتعديل محليًا.
+5. بطاقة القناة الشخصية: عنوان "CHANNEL" وعدد المشتركين، وصف فيه صورة القناة واسمها وآخر منشور وتاريخه، يفتح القناة عند الضغط.
+6. بطاقة: اسم المستخدم username مع أيقونة QR تعرض رمزًا (CoreImage) للمشاركة، ثم النبذة bio مع أيقونة ترجمة (Translation framework من Apple عند iOS 17.4+ وإلا اخفِ الأيقونة)، ثم "Add to Contacts" وبعده "Block User" بالأحمر مع تأكيد قبل التنفيذ.
+7. شريط تبويبات كبسولة قابل للتمرير: Posts وGifts وMedia وFiles وLinks (وVoice وGroups in common إن توفرت). تحته محتوى التبويب: شبكة وسائط ثلاثية الأعمدة للصور والفيديو، وقوائم للملفات والروابط. استخدم searchChatMessages مع المرشح المناسب (مثل searchMessagesFilterPhotoAndVideo) وتحميلًا تدريجيًا، وأعد استخدام MediaGalleryViewer للفتح.
+- تجاهل في المرجع كل ما هو خاص بتطبيق آخر: أزرار المكالمات الخاصة وشارات التطبيق ورمز الدرع بجانب الحالة وأي شعار خارجي.
+أنت تعمل على مستودع KroGram (iOS، Swift/SwiftUI، مشروع يُولَّد بـ XcodeGen من KroGram/project.yml). المطلوب: تغيير شعار التطبيق إلى الشعار الجديد (رأس بشعر أبيض بنمط مانغا داخل فقاعة محادثة، أبيض على أسود)، سواء أيقونة التطبيق أو الشعار المعروض داخل التطبيق.
+
+## الملفات الجاهزة
+أضفتُ إلى المستودع الملفين التاليين (إن لم تجدهما فاطلب مني رفعهما ولا تنشئ شعارًا بديلًا ولا ترسمه بالكود):
+- `KroGram/Design/icon-1024.png`: الأيقونة النهائية، 1024×1024، RGB، بلا شفافية، بلا زوايا مدوّرة.
+- `KroGram/Design/KroLogo.png`: نفس الرسم أبيض بخلفية شفافة (RGBA) للاستخدام داخل التطبيق.
+افحصهما أولًا (الأبعاد، وضع الألوان، عدم وجود قناة ألفا في الأيقونة) وأوقف التنفيذ وأخبرني إن لم تطابق.
+
+## قيود عامة
+- لا Xcode عندك. لا تدّعِ أن البناء نجح، وبيّن ما لم تتحقق منه.
+- كل ملف Swift جديد أو معدّل يبدأ بالسطر الأول حرفيًا: `// Copyright © 2026 Kro. KroGram original materials.`
+- كسّر أي تعبير SwiftUI معقد إلى أجزاء صغيرة (خطأ type-check سابق في Codemagic).
+- لا تغيّر أي أصول أخرى (AccentColor وغيره) ولا إصدارات الحزم، ولا تلمس الأرشيفات في جذر المستودع ولا ملفي Bugs/New bugs.
+- متطلبات Apple للأيقونة: مربعة، بلا شفافية، بلا زوايا مدوّرة مسبقًا (النظام يضيف القناع)، sRGB أو Display P3.
+
+## 1) أيقونة التطبيق
+- انسخ `Design/icon-1024.png` إلى `KroGram/KroGram/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png` واستبدل الملف الحالي.
+- أبقِ اسم المجموعة `AppIcon` كما في `ASSETCATALOG_COMPILER_APPICON_NAME` في project.yml، ولا تغيّر هذا الإعداد.
+- حدّث `Contents.json` لدعم أنماط iOS 18: الأساسي (any) ونسخة dark ونسخة tinted. الشعار أبيض على أسود أصلًا فيصلح للنسخ الثلاث، فاستخدم الملف نفسه للأساسي والداكن، ونسخة tinted بتدرّج الرمادي (يكفي الملف نفسه). تحقق من صيغة `appearances` الصحيحة (luminosity: dark وtinted) للإصدار المستخدم من Xcode قبل الكتابة، وإن لم تتأكد فأبقِ المدخل الأساسي وحده ولا تخمّن صيغة قد تكسر البناء.
+
+## 2) الشعار داخل التطبيق
+- أنشئ `Assets.xcassets/KroLogo.imageset/` يحتوي `KroLogo.png` (بالاسم نفسه) و`Contents.json` بنوع universal، مع `"template-rendering-intent": "template"` حتى يأخذ لون الثيمة عند الحاجة، وأتح استخدامه أبيض ثابتًا عبر `.renderingMode(.original)` حيث يلزم.
+- أنشئ مكوّن SwiftUI واحدًا صغيرًا قابلًا لإعادة الاستخدام (مثل `KroLogoView(size:)`) في DesignSystem/Components.swift أو ملف جديد في DesignSystem/، واستخدمه بدل تكرار `Image("KroLogo")`.
+- ابحث في الشيفرة (`grep` عن الصور النظامية SF Symbols المستخدمة كشعار، وعن LoginView وشاشة الترحيب وSettings/About وDemoBanner والحالات الفارغة) عن كل مكان يعرض شعارًا أو أيقونة تمثّل التطبيق، واستبدله بالمكوّن الجديد. لا تغيّر أي أيقونة وظيفية (إرسال، مرفقات...).
+- إن وُجد الزر العائم الخاص بـ KroGram من مهمة سابقة فاستخدم المكوّن نفسه فيه. وإن لم يُنفَّذ بعد فاترك المكوّن جاهزًا له.
+- اجعل الشعار يتكيّف مع الحجم (من 24pt إلى 120pt) دون تشويه، مع `.resizable().scaledToFit()` و`accessibilityLabel` مترجم (ar/en) في Localizable.strings.
+
+## 3) التحقق
+- أضف اختبار وحدة يتأكد أن `UIImage(named: "KroLogo")` غير nil.
+- أضف سكربتًا `scripts/verify-icon.sh` يتحقق من أن `icon-1024.png` بحجم 1024×1024 وبلا قناة ألفا (على macOS استخدم `sips -g pixelWidth -g pixelHeight -g hasAlpha`)، وأضفه كخطوة قبل البناء في workflow الاختبارات في codemagic.yaml. لا تغيّر بقية خطوات codemagic.yaml.
+- لا تعدّل README إلا بسطر واحد يذكر مكان ملفات الشعار.
+
+## التسليم
+قائمة الملفات المعدّلة وسطر لكل تغيير، وكل الأماكن التي استبدلت فيها الشعار، وما لم تتحقق منه دون بناء (مثل ظهور الأيقونة الفعلي على الشاشة الرئيسية).
