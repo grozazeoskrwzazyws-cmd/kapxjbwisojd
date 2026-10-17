@@ -264,10 +264,6 @@ extension ChatRepository {
         throw MockRepositoryError.unsupported
     }
 
-    enum OutgoingAlbumMedia: Sendable {
-        case photo(path: String)
-        case video(path: String)
-    }
     func sendVoiceNote(chatID: Int64, path: String, duration: Int, topicID: Int64? = nil) async throws {
         throw MockRepositoryError.unsupported
     }

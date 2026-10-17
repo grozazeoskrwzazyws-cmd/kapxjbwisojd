@@ -203,7 +203,12 @@ private struct StickerPreview: View {
     var body: some View {
         Group {
             if let imageData, sticker.format != .webp, let localURL {
-                StickerPlaybackView(format: sticker.format, data: imageData, url: localURL)
+                StickerPlaybackView(
+                    format: sticker.format,
+                    data: imageData,
+                    url: localURL,
+                    cacheKey: sticker.id
+                )
             } else if let imageData, let image = UIImage(data: imageData) {
                 Image(uiImage: image)
                     .resizable()

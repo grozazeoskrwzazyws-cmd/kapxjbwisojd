@@ -185,7 +185,7 @@ private struct WebMStickerPlayer: UIViewControllerRepresentable {
 }
 
 @MainActor
-private final class WebMStickerPlayerController: GLKViewController, GLKViewDelegate {
+private final class WebMStickerPlayerController: GLKViewController {
     private let url: URL
     private var glContext: EAGLContext?
     private var player: OpaquePointer?
@@ -293,7 +293,7 @@ private final class WebMStickerPlayerController: GLKViewController, GLKViewDeleg
         )
     }
 
-    func glkView(_ view: GLKView, drawIn rect: CGRect) {
+    override func glkView(_ view: GLKView, drawIn rect: CGRect) {
         guard let renderContext else { return }
         glClearColor(0, 0, 0, 0)
         glClear(GLbitfield(GL_COLOR_BUFFER_BIT))

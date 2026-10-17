@@ -792,13 +792,6 @@ struct ChatView: View {
         return MessageBubble(
             message: message,
             replied: replied,
-            albumMessages: albumMessages,
-            onMediaTap: { selected, album in
-                mediaGallery = MediaGallerySelection(
-                    messages: album,
-                    selectedMessageID: selected.id
-                )
-            },
             onReplyTap: {
                 Task {
                     guard let target = await vm.replyTarget(for: message, in: chatID) else { return }
@@ -812,7 +805,14 @@ struct ChatView: View {
             onRetry: { vm.retry(message.id, in: chatID, topicID: topicID) },
             onVotePoll: { optionIDs in vm.votePoll(message.id, in: chatID, optionIDs: optionIDs) },
             showsDiscussionComments: chat.kind == .channel && topicID == nil && message.replyCount != nil,
-            onCommentsTap: { discussionPost = message }
+            onCommentsTap: { discussionPost = message },
+            albumMessages: albumMessages,
+            onMediaTap: { selected, album in
+                mediaGallery = MediaGallerySelection(
+                    messages: album,
+                    selectedMessageID: selected.id
+                )
+            }
         )
         .overlay(alignment: .topLeading) {
             if selectingMessages && selectedMessageIDs.contains(message.id) {
@@ -1224,7 +1224,7 @@ struct ChatView: View {
             var captionPending = text
             for start in stride(from: 0, to: items.count, by: 10) {
                 let end = min(start + 10, items.count)
-                var batch: [ChatRepository.OutgoingAlbumMedia] = []
+                var batch: [OutgoingAlbumMedia] = []
                 var outgoingURLs: [URL] = []
                 do {
                     for item in items[start..<end] {
@@ -1276,7 +1276,7 @@ struct ChatView: View {
 
     @MainActor
     private func sendAlbumItem(
-        _ item: ChatRepository.OutgoingAlbumMedia,
+        _ item: OutgoingAlbumMedia,
         caption: String
     ) async throws {
         switch item {

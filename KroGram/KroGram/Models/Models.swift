@@ -191,6 +191,24 @@ struct DiscussionThreadPage: Sendable {
     let messages: [Message]
 }
 
+struct ForumTopic: Identifiable, Hashable, Sendable {
+    var id: Int64
+    var name: String
+    var iconColor: Int
+    var unreadCount: Int
+    var isClosed: Bool
+    var isPinned: Bool
+    var isGeneral: Bool
+    var isCreatedByMe: Bool
+    var order: Int64
+    var lastMessage: Message?
+}
+
+enum OutgoingAlbumMedia: Sendable {
+    case photo(path: String)
+    case video(path: String)
+}
+
 enum MessageMediaKind: String, Codable, Hashable, Sendable {
     case photo, video, animation, document, audio, voice, videoNote, sticker
 }
@@ -317,19 +335,6 @@ struct Chat: Identifiable, Hashable, Sendable {
         self.isForum = isForum
         self.canManageTopics = canManageTopics
         self.canCreateTopics = canCreateTopics
-    }
-
-    struct ForumTopic: Identifiable, Hashable, Sendable {
-        var id: Int64
-        var name: String
-        var iconColor: Int
-        var unreadCount: Int
-        var isClosed: Bool
-        var isPinned: Bool
-        var isGeneral: Bool
-        var isCreatedByMe: Bool
-        var order: Int64
-        var lastMessage: Message?
     }
 
     var lastMessageText: String { messages.last?.text ?? "" }

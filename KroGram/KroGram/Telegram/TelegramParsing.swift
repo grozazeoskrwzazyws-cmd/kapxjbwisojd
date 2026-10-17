@@ -573,6 +573,7 @@ enum TGParse {
             isArchived: archived,
             isMuted: muteFor > 0,
             messages: messages,
+            avatarFileID: int64(((c["photo"] as? JSON)?["small"] as? JSON)?["id"]).nonZero,
             isMarkedAsUnread: (c["is_marked_as_unread"] as? Bool) ?? false,
             telegramFolderIDs: folderIDs,
             mainListOrder: mainOrder,
@@ -583,7 +584,6 @@ enum TGParse {
                     || (notificationSettings["use_default_sound"] as? Bool) == true,
                 showPreview: (notificationSettings["show_preview"] as? Bool) ?? true
             ),
-            avatarFileID: int64(((c["photo"] as? JSON)?["small"] as? JSON)?["id"]).nonZero,
             canPostMessages: kind != .channel,
             canPinMessages: kind != .channel
         )

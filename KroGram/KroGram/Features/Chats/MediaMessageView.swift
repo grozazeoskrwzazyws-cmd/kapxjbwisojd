@@ -118,6 +118,17 @@ struct MediaMessageView: View {
         }
     }
 
+    private var labelString: String {
+        switch media.kind {
+        case .photo: return L("msg.photo")
+        case .video, .videoNote: return L("msg.video")
+        case .animation: return L("msg.gif")
+        case .audio, .voice: return L("msg.audio")
+        case .sticker: return L("msg.sticker")
+        case .document: return L("msg.file")
+        }
+    }
+
     private var symbol: String {
         switch media.kind {
         case .photo: return "photo"
@@ -133,13 +144,14 @@ struct MediaMessageView: View {
         do {
             let url = try await vm.downloadFileURL(
                 fileID: media.fileID,
-                title: media.fileName ?? L(labelKey),
+                title: media.fileName ?? labelString,
                 fileSize: media.fileSize,
                 mediaKind: media.kind,
                 limit: maxDownloadBytes
             )
             localURL = url
-            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0
+            let size = (try? url.resourceValues(forKeys: [URLResourceKey.fileSizeKey]).fileSize)
+                .map(Int64.init) ?? 0
             if [.photo, .sticker].contains(media.kind), size <= 25 * 1_024 * 1_024 {
                 data = try Data(contentsOf: url, options: .mappedIfSafe)
             }
