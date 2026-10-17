@@ -113,13 +113,14 @@ final class ChatsViewModel: ObservableObject {
         }
         drafts = restored
         recentEmojis = Array((defaults.stringArray(forKey: Self.recentEmojisKey) ?? []).prefix(Self.maxRecentEmojis))
-        downloadQueue = (try? JSONDecoder().decode(
+        var restoredDownloadQueue = (try? JSONDecoder().decode(
             [DownloadRecord].self,
             from: defaults.data(forKey: Self.downloadQueueKey) ?? Data()
         )) ?? []
-        for index in downloadQueue.indices where downloadQueue[index].status == .downloading {
-            downloadQueue[index].status = .paused
+        for index in restoredDownloadQueue.indices where restoredDownloadQueue[index].status == .downloading {
+            restoredDownloadQueue[index].status = .paused
         }
+        downloadQueue = restoredDownloadQueue
         uploadQueue = (try? JSONDecoder().decode(
             [UploadRecord].self,
             from: defaults.data(forKey: Self.uploadQueueKey) ?? Data()

@@ -264,7 +264,7 @@ private final class WebMStickerPlayerController: GLKViewController {
 
         var initParameters = mpv_opengl_init_params(
             get_proc_address: { _, name in
-                Self.openGLFunction(named: name)
+                WebMStickerPlayerController.openGLFunction(named: name)
             },
             get_proc_address_ctx: nil
         )
