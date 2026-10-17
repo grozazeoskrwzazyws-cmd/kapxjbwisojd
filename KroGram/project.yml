@@ -14,7 +14,7 @@ settings:
 packages:
   TDLibFramework:
     url: https://github.com/Swiftgram/TDLibFramework
-    branch: main
+    version: 1.8.68-f381f4b3
   SwiftOGG:
     url: https://github.com/element-hq/swift-ogg
     version: 0.0.4

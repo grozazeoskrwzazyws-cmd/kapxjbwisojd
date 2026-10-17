@@ -1199,8 +1199,12 @@ struct ChatView: View {
             }
             let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg"
             let url = try storeOutgoingFile(data, fileExtension: ext)
-            defer { removeOutgoingFileIfSafe(url) }
-            try await vm.sendPhoto(path: url.path, caption: text, to: chatID, topicID: topicID)
+            do {
+                try await vm.sendPhoto(path: url.path, caption: text, to: chatID, topicID: topicID)
+            } catch {
+                removeOutgoingFileIfSafe(url)
+                throw error
+            }
             text = ""
         } catch {
             vm.setMediaError(TGErrors.message(for: error))
@@ -1211,9 +1215,7 @@ struct ChatView: View {
     private func sendPickedAlbum(_ items: [PhotosPickerItem]) async {
         guard !isSendingAlbum else { return }
         isSendingAlbum = true
-        var outgoingURLs: [URL] = []
         defer {
-            outgoingURLs.forEach { removeOutgoingFileIfSafe($0) }
             selectedAlbumItems = []
             isSendingAlbum = false
         }
@@ -1223,44 +1225,48 @@ struct ChatView: View {
             for start in stride(from: 0, to: items.count, by: 10) {
                 let end = min(start + 10, items.count)
                 var batch: [ChatRepository.OutgoingAlbumMedia] = []
-                for item in items[start..<end] {
-                    guard let data = try await item.loadTransferable(type: Data.self), !data.isEmpty else {
-                        throw TDError(code: -3, message: "MEDIA_READ_FAILED")
+                var outgoingURLs: [URL] = []
+                do {
+                    for item in items[start..<end] {
+                        guard let data = try await item.loadTransferable(type: Data.self), !data.isEmpty else {
+                            throw TDError(code: -3, message: "MEDIA_READ_FAILED")
+                        }
+                        let movieType = item.supportedContentTypes.first { $0.conforms(to: .movie) }
+                        if let movieType {
+                            guard data.count <= 25 * 1_024 * 1_024 else {
+                                throw TDError(code: -3, message: "FILE_TOO_LARGE")
+                            }
+                            let ext = movieType.preferredFilenameExtension?.lowercased() ?? "mp4"
+                            guard ["mov", "mp4", "m4v"].contains(ext) else {
+                                throw TDError(code: -3, message: "UNSUPPORTED_MEDIA_TYPE")
+                            }
+                            let url = try storeOutgoingFile(data, fileExtension: ext)
+                            outgoingURLs.append(url)
+                            batch.append(.video(path: url.path))
+                        } else {
+                            guard item.supportedContentTypes.contains(where: { $0.conforms(to: .image) }) else {
+                                throw TDError(code: -3, message: "UNSUPPORTED_MEDIA_TYPE")
+                            }
+                            guard data.count <= 10 * 1_024 * 1_024 else {
+                                throw TDError(code: -3, message: "FILE_TOO_LARGE")
+                            }
+                            let ext = item.supportedContentTypes.first(where: { $0.conforms(to: .image) })?
+                                .preferredFilenameExtension ?? "jpg"
+                            let url = try storeOutgoingFile(data, fileExtension: ext)
+                            outgoingURLs.append(url)
+                            batch.append(.photo(path: url.path))
+                        }
                     }
-                    let movieType = item.supportedContentTypes.first { $0.conforms(to: .movie) }
-                    if let movieType {
-                        guard data.count <= 25 * 1_024 * 1_024 else {
-                            throw TDError(code: -3, message: "FILE_TOO_LARGE")
-                        }
-                        let ext = movieType.preferredFilenameExtension?.lowercased() ?? "mp4"
-                        guard ["mov", "mp4", "m4v"].contains(ext) else {
-                            throw TDError(code: -3, message: "UNSUPPORTED_MEDIA_TYPE")
-                        }
-                        let url = try storeOutgoingFile(data, fileExtension: ext)
-                        outgoingURLs.append(url)
-                        batch.append(.video(path: url.path))
-                    } else {
-                        guard item.supportedContentTypes.contains(where: { $0.conforms(to: .image) }) else {
-                            throw TDError(code: -3, message: "UNSUPPORTED_MEDIA_TYPE")
-                        }
-                        guard data.count <= 10 * 1_024 * 1_024 else {
-                            throw TDError(code: -3, message: "FILE_TOO_LARGE")
-                        }
-                        let ext = item.supportedContentTypes.first(where: { $0.conforms(to: .image) })?
-                            .preferredFilenameExtension ?? "jpg"
-                        let url = try storeOutgoingFile(data, fileExtension: ext)
-                        outgoingURLs.append(url)
-                        batch.append(.photo(path: url.path))
+                    if batch.count > 1 {
+                        try await vm.sendMediaAlbum(batch, caption: captionPending, to: chatID, topicID: topicID)
+                    } else if let item = batch.first {
+                        try await sendAlbumItem(item, caption: captionPending)
                     }
-                }
-                if batch.count > 1 {
-                    try await vm.sendMediaAlbum(batch, caption: captionPending, to: chatID, topicID: topicID)
-                } else if let item = batch.first {
-                    try await sendAlbumItem(item, caption: captionPending)
+                } catch {
+                    outgoingURLs.forEach { removeOutgoingFileIfSafe($0) }
+                    throw error
                 }
                 captionPending = ""
-                outgoingURLs.forEach { removeOutgoingFileIfSafe($0) }
-                outgoingURLs.removeAll()
             }
             text = ""
         } catch {
@@ -1296,7 +1302,10 @@ struct ChatView: View {
             let supportedExtensions = ["mov", "mp4", "m4v"]
             let ext = preferredExtension.flatMap { supportedExtensions.contains($0) ? $0 : nil } ?? "mov"
             let url = try storeOutgoingFile(data, fileExtension: ext)
-            defer { removeOutgoingFileIfSafe(url) }
+            var uploadAccepted = false
+            defer {
+                if !uploadAccepted { removeOutgoingFileIfSafe(url) }
+            }
             let asset = AVURLAsset(url: url)
             let duration = CMTimeGetSeconds(try await asset.load(.duration))
             guard duration.isFinite, duration > 0, duration <= 60 else {
@@ -1315,6 +1324,7 @@ struct ChatView: View {
                 to: chatID,
                 topicID: topicID
             )
+            uploadAccepted = true
         } catch {
             vm.setMediaError(TGErrors.message(for: error))
         }
@@ -1345,6 +1355,7 @@ struct ChatView: View {
                         to: chatID,
                         topicID: topicID
                     )
+                    outgoingURL = nil
                 } catch {
                     vm.setMediaError(TGErrors.message(for: error))
                 }
@@ -1402,7 +1413,10 @@ struct ChatView: View {
         ) else { return }
         for url in files {
             let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
-            if date < cutoff {
+            let isUploading = vm.uploadQueue.contains {
+                $0.status == .uploading && $0.sourcePath == url.path
+            }
+            if date < cutoff && !isUploading {
                 try? FileManager.default.removeItem(at: url)
             }
         }

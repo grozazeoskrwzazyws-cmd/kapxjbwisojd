@@ -1719,7 +1719,7 @@ actor TelegramService {
 
     func sendPhoto(chatID: Int64, path: String, caption: String, topicID: Int64? = nil) async throws {
         try validateOutgoingFile(path, limit: 10 * 1_024 * 1_024)
-        _ = try await call([
+        let message = try await call([
             "@type": "sendMessage",
             "chat_id": chatID,
             "topic_id": topicField(topicID),
@@ -1736,6 +1736,7 @@ actor TelegramService {
                 "has_spoiler": false
             ] as JSON
         ])
+        registerOutgoingUpload(message, path: path, chatID: chatID)
     }
 
     func sendDocument(chatID: Int64, path: String, caption: String, topicID: Int64? = nil) async throws {
@@ -1857,13 +1858,22 @@ actor TelegramService {
                 ]
             }
         }
-        _ = try await call([
+        let result = try await call([
             "@type": "sendMessageAlbum",
             "chat_id": chatID,
             "topic_id": topicField(topicID),
             "input_message_contents": contents,
             "send_options": NSNull()
         ])
+        let messages = result["messages"] as? [JSON] ?? []
+        for (item, message) in zip(items, messages) {
+            let path: String
+            switch item {
+            case .photo(let itemPath), .video(let itemPath):
+                path = itemPath
+            }
+            registerOutgoingUpload(message, path: path, chatID: chatID)
+        }
     }
 
     func sendVideoNote(chatID: Int64, path: String, duration: Int, length: Int, topicID: Int64? = nil) async throws {
@@ -1872,7 +1882,7 @@ actor TelegramService {
             throw TDError(code: -3, message: "INVALID_MEDIA_DURATION")
         }
         let normalizedLength = max(1, min(640, length))
-        _ = try await call([
+        let message = try await call([
             "@type": "sendMessage",
             "chat_id": chatID,
             "topic_id": topicField(topicID),
@@ -1885,6 +1895,7 @@ actor TelegramService {
                 "self_destruct_type": NSNull()
             ] as JSON
         ])
+        registerOutgoingUpload(message, path: path, chatID: chatID)
     }
 
     func sendVoiceNote(chatID: Int64, path: String, duration: Int, topicID: Int64? = nil) async throws {
@@ -1892,7 +1903,7 @@ actor TelegramService {
         guard (1...60).contains(duration) else {
             throw TDError(code: -3, message: "INVALID_MEDIA_DURATION")
         }
-        _ = try await call([
+        let message = try await call([
             "@type": "sendMessage",
             "chat_id": chatID,
             "topic_id": topicField(topicID),
@@ -1908,6 +1919,7 @@ actor TelegramService {
                 "self_destruct_type": NSNull()
             ] as JSON
         ])
+        registerOutgoingUpload(message, path: path, chatID: chatID)
     }
 
     func sendPoll(

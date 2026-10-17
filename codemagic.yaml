@@ -39,8 +39,8 @@ workflows:
           set -euo pipefail
           SIMULATOR_UDID="$(xcrun simctl list devices available 2>/dev/null | awk -F'[()]' '/iPhone/ && /[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-/ {print $2; exit}')"
           if [ -z "$SIMULATOR_UDID" ]; then
-            echo "No iPhone simulator found. Skipping simulator test step."
-            exit 0
+            echo "ERROR: No available iPhone simulator; build and test cannot run." >&2
+            exit 1
           fi
           cd "$CM_BUILD_DIR/KroGram"
           mkdir -p "$CM_BUILD_DIR/KroGram/build"

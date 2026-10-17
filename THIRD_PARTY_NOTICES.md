@@ -6,7 +6,7 @@ KroGram includes or links the following third-party software. Each component rem
 
 ## TDLib
 
-- **Component:** TDLib, distributed to this project through [TDLibFramework](https://github.com/Swiftgram/TDLibFramework) 1.8.68, based on TDLib commit `f381f4b3`.
+- **Component:** TDLib, distributed through [TDLibFramework](https://github.com/Swiftgram/TDLibFramework) release `1.8.68-f381f4b3` (TDLib commit `f381f4b3`).
 - **License:** [Boost Software License 1.0](https://www.boost.org/LICENSE_1_0.txt).
 - **Source:** [tdlib/td](https://github.com/tdlib/td).
 
