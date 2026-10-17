@@ -173,22 +173,22 @@ struct StickerPickerView: View {
                 sendingStickerID = nil
             }
         }
+    }
 
-        @MainActor
-        private func updateInstallation(_ set: TelegramStickerSet) async {
-            let installed = !set.isInstalled
-            await vm.setStickerSetInstalled(set, installed: installed)
-            let updated = vm.stickerSearchResults.first(where: { $0.id == set.id })
-                ?? TelegramStickerSet(
-                    id: set.id,
-                    title: set.title,
-                    name: set.name,
-                    stickerCount: set.stickerCount,
-                    isInstalled: installed,
-                    isArchived: false
-                )
-            if selectedSet?.id == set.id { selectedSet = updated }
-        }
+    @MainActor
+    private func updateInstallation(_ set: TelegramStickerSet) async {
+        let installed = !set.isInstalled
+        await vm.setStickerSetInstalled(set, installed: installed)
+        let updated = vm.stickerSearchResults.first(where: { $0.id == set.id })
+            ?? TelegramStickerSet(
+                id: set.id,
+                title: set.title,
+                name: set.name,
+                stickerCount: set.stickerCount,
+                isInstalled: installed,
+                isArchived: false
+            )
+        if selectedSet?.id == set.id { selectedSet = updated }
     }
 }
 

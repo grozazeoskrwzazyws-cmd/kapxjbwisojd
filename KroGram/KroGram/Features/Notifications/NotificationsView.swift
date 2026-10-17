@@ -185,3 +185,4 @@ struct ChatNotificationSettingsView: View {
             isLoading = false
         }
     }
+}
