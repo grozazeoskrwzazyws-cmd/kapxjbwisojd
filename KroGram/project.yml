@@ -1,0 +1,79 @@
+name: KroGram
+options:
+  bundleIdPrefix: com.krogram
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: ar
+  knownRegions: [ar, en, Base]
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "2"
+packages:
+  TDLibFramework:
+    url: https://github.com/Swiftgram/TDLibFramework
+    branch: main
+  SwiftOGG:
+    url: https://github.com/element-hq/swift-ogg
+    version: 0.0.4
+  Lottie:
+    url: https://github.com/airbnb/lottie-ios
+    version: 4.5.2
+  GzipSwift:
+    url: https://github.com/1024jp/GzipSwift
+    version: 6.0.1
+  MPVKit:
+    url: https://github.com/mpvkit/MPVKit
+    version: 1.1.0-n9.0.2
+targets:
+  KroGram:
+    type: application
+    platform: iOS
+    sources:
+      - path: KroGram
+    dependencies:
+      - package: TDLibFramework
+      - package: SwiftOGG
+      - package: Lottie
+      - package: GzipSwift
+        product: Gzip
+      - package: MPVKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.krogram.app
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: KroGram
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2026 Kro. Original KroGram materials; Telegram contact @krofullpower; see LICENSE and THIRD_PARTY_NOTICES."
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: KroGram records voice messages only when you tap Record.
+        INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: KroGram saves media to your photo library only when you tap Save.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: KroGram uses your location only when you choose to share it in a chat.
+        INFOPLIST_KEY_NSFaceIDUsageDescription: KroGram uses Face ID only to unlock this app.
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+  KroGramTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: KroGramTests
+    dependencies:
+      - target: KroGram
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.krogram.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  KroGram:
+    build:
+      targets:
+        KroGram: all
+        KroGramTests: [test]
+    test:
+      targets:
+        - KroGramTests

@@ -1,0 +1,363 @@
+# KroGram — دليل البرومبتات
+
+**طريقة الاستخدام:**
+1. في كل محادثة جديدة مع الذكاء الاصطناعي، أرسل أولاً **برومبت السياق الرئيسي**، وأرفق معه `docs/ARCHITECTURE.md` و`KroGram/project.yml`.
+2. ثم أرسل برومبت **ميزة واحدة فقط** مع الملفات المذكورة تحت «Attached».
+3. ادفع التعديل إلى GitHub ليبني Codemagic. إذا فشل البناء أرسل **برومبت إصلاح البناء**.
+4. قبل الدمج النهائي أرسل **برومبت المراجعة**.
+5. لا تنتقل للميزة التالية قبل نجاح البناء وتجربتها على الجهاز.
+
+البرومبتات مكتوبة بالإنجليزية لأن نتائج الكود معها أدق. استبدل ما بين `<...>` بمحتواك.
+
+---
+
+## أ. البرومبتات الثابتة
+
+### A1. السياق الرئيسي (أول رسالة في كل محادثة)
+
+```text
+You are a senior iOS engineer helping me build KroGram, an unofficial standalone Telegram client for iOS.
+
+Stack: Swift, SwiftUI, TDLib (via the TDLibFramework Swift package), XcodeGen (KroGram/project.yml), built and tested on Codemagic. I have no local Xcode. Sources: KroGram/KroGram/. Tests: KroGram/KroGramTests/. Architecture notes: docs/ARCHITECTURE.md (attached).
+
+Rules:
+1. One feature per request. Keep diffs minimal. Do not refactor unrelated code.
+2. Use TDLib for all Telegram logic. Verify function/type names against td_api.tl for the TDLib version used in the project. Never invent API names. If unsure, say so.
+3. Reimplement behavior from scratch. Do not copy code from Telegram-iOS (GPL).
+4. Put each feature in its own folder/module with a small public interface.
+5. Every user-facing string needs Arabic and English localization.
+6. No secrets in the repo. api_id/api_hash stay in Keychain.
+7. Stay within the deployment target in project.yml. Avoid newer APIs.
+8. Handle TDLib updates properly (state must come from updates, not assumptions). All UI work on the main thread.
+9. Reply with: (a) a short plan, (b) the full contents of every new or changed file, (c) any project.yml changes, (d) a manual test checklist, (e) anything that may fail to compile.
+
+Acknowledge these rules in one line, then wait for my feature request.
+```
+
+### A2. إصلاح البناء
+
+```text
+The Codemagic build failed. Fix only what the log shows. Do not change behavior or add features.
+Return the full corrected files and explain the root cause in two lines.
+
+Build log (last 150 lines before the first error):
+<paste log>
+```
+
+### A3. مراجعة قبل الدمج
+
+```text
+Review the changes below for: compile errors, wrong TDLib function names, missing update handling, main-thread violations, retain cycles and memory leaks, missing Arabic/English strings, RTL layout problems, and security issues.
+List problems by severity, then give corrected code only for the problems found.
+
+<paste diff or files>
+```
+
+### A4. قالب ميزة جديدة
+
+```text
+Feature: <name>
+Goal: <one sentence>
+Attached files: <list>
+Requirements:
+- <item>
+Done when:
+- <item>
+Out of scope: <item>
+```
+
+---
+
+## المرحلة 0: تثبيت الأساس
+
+### P0.1 نجاح البناء والاختبارات
+
+```text
+Feature: Make the current repo build and pass tests on Codemagic.
+Goal: A green "KroGram - Build & Test" workflow.
+Attached: codemagic.yaml, KroGram/project.yml, the build log, docs/ARCHITECTURE.md.
+Requirements:
+- Find every compile error from the log and fix it with minimal changes.
+- Check that XcodeGen config includes all source and test folders.
+- Do not add features.
+Done when: build + tests would pass; list any remaining risk.
+```
+
+### P0.2 إغلاق مسودة Phase A
+
+```text
+Feature: Finish the unverified Phase A items.
+Goal: Make text formatting, remote search, reactions, pin/forward, incoming polls, and voice messages correct against TDLib.
+Attached: the files for chat, composer, media, and polls; docs/ARCHITECTURE.md.
+Requirements:
+- Audit each item against td_api.tl and fix wrong calls.
+- Voice notes: record AAC in M4A, then check TDLib's expected format for inputMessageVoiceNote (waveform, duration). Explain whether conversion to OGG/Opus is required and implement it if so.
+- Polls: vote, retract vote, show results.
+- Add unit tests for the pure logic parts.
+Done when: each item has a manual test steps list I can run on a device.
+```
+
+### P0.3 جاهزية المستودع
+
+```text
+Feature: Repository hygiene.
+Goal: Safe, clear repo.
+Requirements:
+- Add a LICENSE file (I will tell you which license) and a THIRD_PARTY notice for TDLib (Boost) and any other dependency.
+- Update .gitignore for Xcode, signing files, and secrets.
+- Add a README section stating this is an unofficial client that uses the user's own api_id/api_hash.
+Done when: files are ready to commit.
+```
+
+---
+
+## المرحلة 1: أساسيات المحادثة
+
+### P1.1 الرد والتعديل والحذف والنسخ
+
+```text
+Feature: Reply, edit, delete, copy.
+Attached: chat view, message bubble, composer, TDLib service files.
+Requirements:
+- Long-press (context menu) on a message: Reply, Edit (own messages only), Delete (for me / for everyone when allowed), Copy.
+- Show a reply preview bar above the composer and a quoted preview inside the bubble; tapping it scrolls to the original message.
+- Edited messages show an "edited" label. React to updateMessageEdited and updateDeleteMessages.
+Done when: all four actions work in private chats, groups, and channels where permitted.
+```
+
+### P1.2 الرسائل المحفوظة وإعادة التوجيه
+
+```text
+Feature: Saved Messages and forwarding.
+Requirements:
+- Saved Messages chat at the top of the chat list.
+- Forward one or several selected messages to one or more chats, with an option to hide the original sender.
+- Multi-select mode in chat (select, forward, delete).
+Done when: forwarding a mix of text, photo, and file works.
+```
+
+### P1.3 المجلدات والأرشيف والكتم والتثبيت
+
+```text
+Feature: Chat folders, archive, mute, pin.
+Requirements:
+- Folder tabs above the chat list from TDLib chat folders (list, create, edit, reorder, delete).
+- Archive list via the archive chat list, with swipe actions: archive, mute (duration choices), pin, mark read/unread.
+- Pinned chats stay on top per list. Unread badges per folder.
+Done when: folder changes sync with the official Telegram app on my account.
+```
+
+### P1.4 الإشعارات
+
+```text
+Feature: Push notifications design and client side.
+Goal: Explain the options, then implement the client side.
+Requirements:
+- Explain clearly that APNs push for a third-party Telegram client needs a server that receives pushes and relays them, and what that server must do with TDLib's registerDevice / processPushNotification flow.
+- Implement client side: permission request, device token registration with TDLib, local notifications while the app runs, per-chat notification settings screen, badge count.
+- Do not build the server yet; give me a short design for it.
+Done when: foreground and local notifications work and the push flow is documented.
+```
+
+---
+
+## المرحلة 2: المجموعات والقنوات
+
+### P2.1 المجموعات
+
+```text
+Feature: Create and manage groups.
+Requirements:
+- Create a group (name, photo, members). Group info screen: members list, add/remove members, leave, invite link.
+- Admin tools: promote/demote admins with rights, restrict/ban members.
+- Use TDLib supergroup/basic group APIs as appropriate and handle the upgrade of a basic group to a supergroup.
+Done when: I can create and manage a group from the app and see changes in the official app.
+```
+
+### P2.2 القنوات
+
+```text
+Feature: Channels.
+Requirements:
+- Create a channel, post messages, edit/delete posts, view counters.
+- Join/leave by username or invite link, subscriber count, channel info screen.
+- Read-only composer for non-admins.
+Done when: posting and viewing work for admin and for subscriber accounts.
+```
+
+### P2.3 المواضيع (Topics)
+
+```text
+Feature: Forum topics in supergroups.
+Requirements:
+- Detect forum supergroups, list topics with icons and unread counts, open a topic as its own thread.
+- Create, rename, close, and reopen topics when permitted.
+Done when: sending in and switching between topics works.
+```
+
+### P2.4 التعليقات على منشورات القنوات
+
+```text
+Feature: Comments on channel posts.
+Requirements:
+- Show the comment counter under posts that have a discussion thread; open the thread (message thread APIs) and allow replying.
+- Keep scroll position and unread state correct.
+Done when: comments display and send correctly.
+```
+
+---
+
+## المرحلة 3: الوسائط المتقدمة
+
+### P3.1 عارض الوسائط والألبومات
+
+```text
+Feature: Media viewer and albums.
+Requirements:
+- Full-screen viewer with swipe between media, pinch zoom, share/save, and caption.
+- Send and display albums (several photos/videos grouped).
+- Streaming-friendly video playback with progress and download state.
+Done when: viewing and sending albums works smoothly with 20+ items.
+```
+
+### P3.2 الملصقات المتحركة
+
+```text
+Feature: Animated and video stickers.
+Requirements:
+- Render TGS (Lottie) and WebM video stickers; static WebP as before.
+- Sticker sets: installed list, search, recent, add/remove sets, a sticker picker panel.
+- Cache decoded frames and limit memory.
+Done when: animated stickers play in chat and the picker without frame drops or memory growth.
+```
+
+### P3.3 GIF والإيموجي
+
+```text
+Feature: GIFs, emoji picker, custom emoji.
+Requirements:
+- Saved GIFs panel and GIF search (inline bot or TDLib search), send animations.
+- Emoji picker with recents; display custom emoji in text where entities exist.
+Done when: I can search, send, and receive GIFs and emoji reliably.
+```
+
+### P3.4 مدير التنزيلات وحدود الملفات
+
+```text
+Feature: Download manager and large files.
+Requirements:
+- Remove the 25 MB manual download limit. Add a downloads screen with queue, pause/resume/cancel, and progress.
+- Storage settings: cache size limit, clear by type, auto-download rules per network type.
+- Upload large files with progress and cancel.
+Done when: a 1 GB file uploads and downloads with correct progress and resume.
+```
+
+---
+
+## المرحلة 4: الأمان والحساب
+
+### P4.1 رمز القفل
+
+```text
+Feature: App passcode and biometrics.
+Requirements:
+- Local passcode (stored hashed in Keychain), Face ID/Touch ID unlock, auto-lock timeout, blur in the app switcher.
+- Do not confuse with Telegram's cloud two-step verification; implement that separately in a later task.
+Done when: the app locks and unlocks correctly after background/foreground cycles.
+```
+
+### P4.2 الجلسات والخصوصية
+
+```text
+Feature: Active sessions and privacy settings.
+Requirements:
+- Sessions list with device info, terminate one or all others.
+- Privacy screens: last seen, phone number, profile photo, calls, groups, forwards (rules via TDLib privacy settings), blocked users, two-step verification set/change/disable.
+Done when: changes appear in the official app.
+```
+
+### P4.3 تعدد الحسابات
+
+```text
+Feature: Multiple accounts.
+Requirements:
+- Design first: one TDLib client instance per account with separate database and files directories; show the design and the migration for the existing single account.
+- Then implement: add account, switch account from the settings/menu, per-account unread badges, per-account logout.
+Done when: two accounts can run side by side without data mixing.
+```
+
+### P4.4 الدردشات السرية
+
+```text
+Feature: Secret chats.
+Requirements:
+- Create a secret chat from a user's profile, show the encryption key visual, self-destruct timer, and screenshot notice if available.
+- Make clear in the UI that secret chats are device-specific.
+Done when: sending text and photos in a secret chat works between two devices.
+```
+
+---
+
+## المرحلة 5: المكالمات
+
+### P5.1 دراسة الجدوى أولاً
+
+```text
+Feature: Voice/video calls feasibility.
+Goal: A written report, no code yet.
+Requirements:
+- Explain what TDLib provides for call signaling and what it does NOT provide (media transport, encryption of media, audio session).
+- List the realistic options for the media layer on iOS (for example an existing open-source library vs building on WebRTC), including license implications (GPL vs permissive) and App Store requirements (CallKit, PushKit).
+- Give effort estimate, risks, and a minimal first milestone (outgoing voice call).
+Done when: I can decide whether to include calls.
+```
+
+---
+
+## المرحلة 6: ميزاتك الخاصة (Commander)
+
+### P6.1 هيكلة Commander كوحدة مستقلة
+
+```text
+Feature: Refactor KroGram Commander into an isolated module.
+Attached: all Commander files and settings screen.
+Requirements:
+- Define a Command protocol (name, aliases, description, permission level, async execute(context)), a registry, and a parser.
+- Move existing commands (calculator, text tools, chat info, local games) behind that protocol with no behavior change.
+- Enable/disable per command from settings. No dependency from other modules into Commander internals.
+Done when: existing commands still work and a new command needs one small file.
+```
+
+### P6.2 أوامر جديدة
+
+```text
+Feature: New Commander commands: <list what you want>.
+Requirements:
+- Each command: one file, localized help text, unit tests for the logic.
+- Commands must only use official TDLib features and the user's own account actions. No spam, mass messaging, or scraping behavior.
+Done when: each command has usage examples in the help screen.
+```
+
+---
+
+## المرحلة النهائية: الصقل
+
+### F1 الأداء والذاكرة
+
+```text
+Feature: Performance pass.
+Requirements:
+- Profile and fix: chat list scrolling, long chat history, image/video memory, TDLib update handling on the main thread.
+- Use lazy loading, diffing, and prefetch where suitable. Report what you changed and expected impact.
+Done when: a 10,000-message chat scrolls smoothly.
+```
+
+### F2 الجاهزية للنشر
+
+```text
+Feature: Release readiness.
+Requirements:
+- Checklist for TestFlight/App Store: unofficial-client disclosure inside the app and the store description, user's own api_id/api_hash flow, privacy policy points, content moderation and report features Apple expects for user-generated content, and Telegram API terms to comply with.
+- Accessibility (Dynamic Type, VoiceOver), RTL review, localization audit.
+Done when: I have a pass/fail checklist and fixes for failures.
+```
